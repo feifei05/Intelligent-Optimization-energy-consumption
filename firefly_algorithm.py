@@ -6,7 +6,7 @@ import pandas as pd
 detected_residents = {}
 # 统计充电次数
 charge_num_count = 0
-df2 = pd.read_csv('F:/360MoveData/Users/Ga/Desktop/dataset.csv')
+df2 = pd.read_csv('dataset.csv')
 
 class Resident:
     def __init__(self, name, x, y):
@@ -43,6 +43,7 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
+            print(resident.name) #打印已检测居民name
             detected_residents[resident.name] = True
 
 
@@ -134,8 +135,7 @@ def firefly_bee_phase(solutions, residents, edge_devices):
                         positions[j] = new_position
                         solution.fitness = fitness
 
-def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery,
-                                   max_iterations):
+def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery):
     # 生成居民对象，放入列表中
     residents = generate_residents(num_residents, area_size)
     # 生成边缘设备对象，放入列表中
@@ -147,21 +147,25 @@ def optimize_edge_device_positions(num_residents, area_size, num_devices, radius
     solutions = generate_initial_solutions(num_devices, area_size)
     best_solution = None
     best_fitness = 0
-
-    for _ in range(max_iterations):
+    i = 0
+    while False in detected_residents.values():
+        i += 1
         for resident in residents:
             if not resident.detected:
                 resident.move(max_resident_step)
 
-        # 萤火虫算法的流程
+            # 萤火虫算法的流程
         firefly_bee_phase(solutions, residents, edge_devices)
         scout_firefly_phase(solutions, residents, edge_devices, area_size)
 
         for solution in solutions:
             fitness = evaluate_fitness(solution, residents, edge_devices)
-            if fitness > best_fitness:
+            if fitness >= best_fitness:
                 best_solution = solution
                 best_fitness = fitness
+
+    print("迭代次数：")
+    print(i)
 
     return residents, edge_devices, best_solution
 
@@ -202,14 +206,13 @@ if __name__ == '__main__':
     radius = 10
     max_battery = 100
     warning_battery = 20
-    max_iterations = 30
     max_resident_step = 8
 
     # 优化
     start_time = time.time()
     residents, edge_devices, best_solution = optimize_edge_device_positions(num_residents, area_size, num_devices,
                                                                            radius, max_battery, warning_battery,
-                                                                           max_iterations)
+                                                                           )
 
     end_time = time.time()
     print("充电次数：")
@@ -218,9 +221,3 @@ if __name__ == '__main__':
     print(end_time - start_time)
     # 可视化
     visualize(residents, edge_devices, best_solution, area_size)
-
-
-
-
-
-#
