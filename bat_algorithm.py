@@ -48,6 +48,7 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
+            print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True
 
 
@@ -63,8 +64,8 @@ class Bat:
 # 随机生成居民（位置、名字）
 def generate_residents(num_residents, area_size):
     # 使用正态分布随机生成居民的初始位置
-    x = df['x3'].values
-    y = df['y3'].values
+    x = df['x1'].values
+    y = df['y1'].values
 
     residents = [Resident("resident_" + str(i), x[i], y[i]) for i in range(num_residents)]
     for resident in residents:
@@ -133,8 +134,7 @@ def bat_search(solutions, residents, edge_devices, area_size):
 
 
 # 优化边缘设备位置
-def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery,
-                                   max_iterations):
+def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery,):
     # 生成居民对象，放入列表中
     residents = generate_residents(num_residents, area_size)
     # 生成边缘设备对象，放入列表中
@@ -144,8 +144,9 @@ def optimize_edge_device_positions(num_residents, area_size, num_devices, radius
     solutions = generate_initial_solutions(num_devices, area_size)  # 设备数量、矩形大小 （初始解）
     best_solution = None
     best_fitness = 0
-
+    i = 0
     while False in detected_residents.values():
+        i += 1
         for resident in residents:
             if not resident.detected:
                 resident.move(max_resident_step)
@@ -154,10 +155,10 @@ def optimize_edge_device_positions(num_residents, area_size, num_devices, radius
 
         for solution in solutions:
             fitness = evaluate_fitness(solution, residents, edge_devices)
-            if fitness > best_fitness:
+            if fitness >= best_fitness:
                 best_solution = solution
                 best_fitness = fitness
-
+    print(f"迭代次数：{i}")
     return residents, edge_devices, best_solution
 
 
@@ -194,13 +195,12 @@ num_devices = 5
 radius = 10
 max_battery = 100
 warning_battery = 20
-max_iterations = 30
 max_resident_step = 8
 
 # 优化
 start_time = time.time()
 residents, edge_devices, best_solution = optimize_edge_device_positions(num_residents, area_size, num_devices, radius,
-                                                                        max_battery, warning_battery, max_iterations)
+                                                                        max_battery, warning_battery)
 
 # 可视化
 visualize(residents, edge_devices, best_solution, area_size)
