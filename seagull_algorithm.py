@@ -46,7 +46,9 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
+            print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True   #用来跟踪已被检测到的居民和充电次数的操作
+
 
 
 class Seagull:
@@ -55,7 +57,7 @@ class Seagull:
         self.fitness = 0
 
 
-def generate_residents(num_residents, area_size):
+def generate_residents(num_residents):
     # 提取两列数据并转换为NumPy数组
     x = df['x3'].values
     y = df['y3'].values
@@ -109,41 +111,43 @@ def update_seagull_positions(solution, residents, edge_devices, max_seagull_step
     solution.positions = positions
 
 
-def seagull_algorithm(solutions, residents, edge_devices, area_size, max_iterations, max_seagull_step):
+def seagull_algorithm(solutions, residents, edge_devices,max_iterations, max_seagull_step):
     best_solution = None
     best_fitness = 0
+    i = 0
+    while False in detected_residents.values():
+        i += 1
+        for _ in range(max_iterations):
+            for resident in residents:
+                if not resident.detected:
+                    resident.move(max_resident_step)
+            for solution in solutions:
+                fitness = evaluate_fitness(solution, residents, edge_devices)
+                if fitness >= best_fitness:
+                    best_solution = solution
+                    best_fitness = fitness
 
-    for _ in range(max_iterations):
-        for resident in residents:
-            if not resident.detected:
-                resident.move(max_resident_step)
-        for solution in solutions:
-            fitness = evaluate_fitness(solution, residents, edge_devices)
-            if fitness > best_fitness:
-                best_solution = solution
-                best_fitness = fitness
+            for solution in solutions:
+                update_seagull_positions(solution, residents, edge_devices, max_seagull_step)
 
-        for solution in solutions:
-            update_seagull_positions(solution, residents, edge_devices, max_seagull_step)
-
-        # 更新最佳解的适应度值
-        best_solution.fitness = best_fitness
-
+            # 更新最佳解的适应度值
+            best_solution.fitness = best_fitness
+    print(f"迭代次数：{i}")
     return best_solution
 
 
 
 def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery,
-                                   max_iterations, max_resident_step, max_seagull_step):
+                                   max_iterations, max_seagull_step):
     # 生成居民对象，放入列表中
-    residents = generate_residents(num_residents, area_size)
+    residents = generate_residents(num_residents)
     # 生成边缘设备对象，放入列表中
     edge_devices = [EdgeDevice(0, 0, radius, max_battery, warning_battery) for _ in range(num_devices)]
 
     # 海鸥算法所需的参数
     solutions = generate_initial_solutions(num_devices, area_size)
 
-    best_solution = seagull_algorithm(solutions, residents, edge_devices, area_size, max_iterations, max_seagull_step)
+    best_solution = seagull_algorithm(solutions, residents, edge_devices, max_iterations, max_seagull_step)
 
     return residents, edge_devices, best_solution
 
@@ -181,14 +185,13 @@ num_devices = 5
 radius = 10
 max_battery = 100
 warning_battery = 20
-max_iterations = 30
 max_resident_step = 8
 max_seagull_step = 5
 
 # 优化
 start_time = time.time()
 residents, edge_devices, best_solution = optimize_edge_device_positions(num_residents, area_size, num_devices, radius,
-                                                                        max_battery, warning_battery, max_iterations,
+                                                                        max_battery, warning_battery,
                                                                         max_resident_step, max_seagull_step)
 
 # 可视化
