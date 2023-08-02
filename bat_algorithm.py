@@ -36,6 +36,7 @@ class EdgeDevice:
         self.max_battery = max_battery
         self.battery = max_battery
         self.warning_battery = warning_battery
+        self.energy_consume = 2996.64
 
     def detect_resident(self, resident):
         global charge_num_count
@@ -48,8 +49,9 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
-            print(resident.name)  # 打印已检测居民name
+            # print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True
+            self.energy_consume += 0.0092
 
 
 class Bat:
@@ -102,6 +104,7 @@ def update_bat_position(bat, best_solution):
     new_position = bat.position + bat.velocity
     new_position = np.clip(new_position, [0, 0], area_size)
     bat.position = new_position
+    return bat.position
 
 
 # 蝙蝠搜索行为
@@ -113,11 +116,12 @@ def bat_search(solutions, residents, edge_devices, area_size):
     f_max = np.sqrt(f_max.x ** 2 + f_max.y ** 2)
 
     best_solution = max(solutions, key=lambda solution: solution.fitness)
-    for bat in solutions:
+    for i, bat in enumerate(solutions):
         bat.frequency = f_min + (f_max - f_min) * np.random.rand()
         bat.pulse_rate = np.random.rand()
+        position = bat.position
 
-        update_bat_position(bat, best_solution)
+        new_position = update_bat_position(bat, best_solution)
 
         if np.random.rand() > bat.pulse_rate:
             bat.position += alpha * (np.random.rand(2) - 0.5)
@@ -126,6 +130,9 @@ def bat_search(solutions, residents, edge_devices, area_size):
         fitness = evaluate_fitness(bat, residents, edge_devices)
         if fitness > bat.fitness:
             bat.fitness = fitness
+            distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+            energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+            edge_devices[i].energy_consume += energy
 
         if np.random.rand() < bat.pulse_rate and bat.fitness > best_solution.fitness:
             best_solution = bat
@@ -204,7 +211,13 @@ residents, edge_devices, best_solution = optimize_edge_device_positions(num_resi
 
 # 可视化
 visualize(residents, edge_devices, best_solution, area_size)
+sum_energy = 0
+for i in range(num_devices):
+    sum_energy += edge_devices[i].energy_consume
 end_time = time.time()
+
+print("sum_energy")
+print(sum_energy)
 
 print("充电次数:")
 print(charge_num_count)

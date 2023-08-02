@@ -36,6 +36,7 @@ class EdgeDevice:
         self.max_battery = max_battery
         self.battery = max_battery
         self.warning_battery = warning_battery
+        self.energy_consume = 2996.64
 
     def detect_resident(self, resident):
         global charge_num_count
@@ -49,6 +50,7 @@ class EdgeDevice:
             self.battery -= 1
             resident.detected = True
             detected_residents[resident.name] = True
+            self.energy_consume += 0.0092
 
 
 class ArtificialBee:
@@ -108,10 +110,16 @@ def employed_bee_phase(solutions, residents, edge_devices):
             neighbor_solution = solutions[neighbor_index]
             neighbor_positions = neighbor_solution.positions
             new_position = ((position[0] + neighbor_positions[j][0]) / 2, (position[1] + neighbor_positions[j][1]) / 2)
+
             fitness = evaluate_fitness(ArtificialBee(positions[:j] + [new_position] + positions[j + 1:]), residents,
                                        edge_devices)
             if fitness > solution.fitness:
                 positions[j] = new_position
+
+                distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+                energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+                edge_devices[i].energy_consume += energy
+
                 solution.fitness = fitness
 
 
@@ -132,6 +140,11 @@ def onlooker_bee_phase(solutions, residents, edge_devices):
                                            edge_devices)
                 if fitness > solution.fitness:
                     positions[j] = new_position
+
+                    distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+                    energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+                    edge_devices[i].energy_consume += energy
+
                     solution.fitness = fitness
 
 
@@ -217,8 +230,14 @@ residents, edge_devices, best_solution = optimize_edge_device_positions(num_resi
 
 # 可视化
 visualize(residents, edge_devices, best_solution, area_size)
+
+sum_energy = 0
+for i in range(num_devices):
+    sum_energy += edge_devices[i].energy_consume
 end_time = time.time()
 
+print("sum_energy")
+print(sum_energy)
 print("充电次数:")
 print(charge_num_count)
 print("运行时间:")
