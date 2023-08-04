@@ -7,6 +7,7 @@ detected_residents = {}
 charge_num_count = 0
 df2 = pd.read_csv('dataset.csv')
 
+
 class Resident:
     def __init__(self, name, x, y):
         self.name = name
@@ -20,6 +21,7 @@ class Resident:
         self.x = np.clip(self.x, 0, area_size[0])
         self.y = np.clip(self.y, 0, area_size[1])
 
+
 class EdgeDevice:
     def __init__(self, x, y, radius, max_battery, warning_battery):
         self.x = x
@@ -28,6 +30,7 @@ class EdgeDevice:
         self.max_battery = max_battery
         self.battery = max_battery
         self.warning_battery = warning_battery
+        self.energy_consume = 2996.64
 
     def detect_resident(self, resident):
         global charge_num_count
@@ -40,13 +43,16 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
-            print(resident.name)  # 打印已检测居民name
+            # print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True
+            self.energy_consume += 0.0092
+
 
 class Cuckoo:
     def __init__(self, positions):
         self.positions = positions
         self.fitness = 0
+
 
 def generate_residents(num_residents, area_size):
     x = np.array(df2['x3'].values)
@@ -58,12 +64,14 @@ def generate_residents(num_residents, area_size):
 
     return residents
 
+
 def generate_initial_solutions(num_devices, area_size):
     solutions = []
     for _ in range(num_devices):
         positions = [(np.random.uniform(0, area_size[0]), np.random.uniform(0, area_size[1]))] * num_devices
         solutions.append(Cuckoo(positions))
     return solutions
+
 
 def evaluate_fitness(solution, residents, edge_devices):
     for i, device in enumerate(edge_devices):
@@ -75,6 +83,7 @@ def evaluate_fitness(solution, residents, edge_devices):
 
     fitness = sum([1 for resident in residents if resident.detected])
     return fitness
+
 
 def cuckoo_search_phase(solutions, residents, edge_devices, area_size):
     alpha = 0.01  # 步长缩放因子
@@ -110,7 +119,13 @@ def cuckoo_search_phase(solutions, residents, edge_devices, area_size):
 
                     if fitness > solution.fitness:
                         positions[j] = new_position
+
+                        distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+                        energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+                        edge_devices[i].energy_consume += energy
+
                         solution.fitness = fitness
+
 
 def optimize_edge_device_positions(num_residents, area_size, num_devices, radius, max_battery, warning_battery):
     residents = generate_residents(num_residents, area_size)
@@ -139,6 +154,7 @@ def optimize_edge_device_positions(num_residents, area_size, num_devices, radius
 
     return residents, edge_devices, best_solution
 
+
 def visualize(residents, edge_devices, best_solution, area_size):
     fig, ax = plt.subplots()
     ax.set_xlim([0, area_size[0]])
@@ -165,6 +181,7 @@ def visualize(residents, edge_devices, best_solution, area_size):
     print(best_solution.fitness)
     plt.show()
 
+
 if __name__ == '__main__':
     np.random.seed(42)
     num_residents = 1000
@@ -177,9 +194,15 @@ if __name__ == '__main__':
 
     start_time = time.time()
     residents, edge_devices, best_solution = optimize_edge_device_positions(num_residents, area_size, num_devices,
-                                                                           radius, max_battery, warning_battery)
+                                                                            radius, max_battery, warning_battery)
 
+    sum_energy = 0
+    for i in range(num_devices):
+        sum_energy += edge_devices[i].energy_consume
     end_time = time.time()
+
+    print("sum_energy")
+    print(sum_energy)
     print("充电次数：")
     print(charge_num_count)
     print("运行时间")
