@@ -1,3 +1,9 @@
+# -*- coding: UTF-8 -*-
+# @Author: Kitty
+# @File：seagull_algorithm.py
+# @Date：2023-08-01 21:07
+
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -34,6 +40,7 @@ class EdgeDevice:
         self.max_battery = max_battery
         self.battery = max_battery
         self.warning_battery = warning_battery
+        self.energy_consume = 2996.64
 
     def detect_resident(self, resident):
         global charge_num_count
@@ -46,8 +53,9 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
-            print(resident.name)  # 打印已检测居民name
+            # print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True   #用来跟踪已被检测到的居民和充电次数的操作
+            self.energy_consume += 0.0092
 
 
 
@@ -99,6 +107,9 @@ def update_seagull_positions(solution, residents, edge_devices, max_seagull_step
 
             old_fitness = evaluate_fitness(solution, residents, edge_devices)
             positions[i] = new_position
+            distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+            energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+            edge_devices[i].energy_consume += energy
             new_fitness = evaluate_fitness(solution, residents, edge_devices)
 
             if new_fitness > old_fitness:
@@ -124,6 +135,7 @@ def seagull_algorithm(solutions, residents, edge_devices,max_iterations, max_sea
             for solution in solutions:
                 fitness = evaluate_fitness(solution, residents, edge_devices)
                 if fitness >= best_fitness:
+
                     best_solution = solution
                     best_fitness = fitness
 
@@ -132,7 +144,14 @@ def seagull_algorithm(solutions, residents, edge_devices,max_iterations, max_sea
 
             # 更新最佳解的适应度值
             best_solution.fitness = best_fitness
-    print(f"迭代次数：{i}")
+
+    sum_energy = 0
+    for i in range(num_devices):
+        sum_energy += edge_devices[i].energy_consume
+    print("sum_energy")
+    print(sum_energy)
+    print("迭代次数：")
+    print(i)
     return best_solution
 
 
@@ -175,7 +194,8 @@ def visualize(residents, edge_devices, best_solution, area_size):
                 (best_solution.positions[0][0], best_solution.positions[0][1] - 10), ha='center')
 
     plt.show()
-    print("最好路径的适应度:"+str(best_solution.fitness))
+    print("最佳路径适应度:")
+    print(best_solution.fitness)
 
 
 # 参数设置
@@ -186,6 +206,7 @@ radius = 10
 max_battery = 100
 warning_battery = 20
 max_resident_step = 8
+
 max_seagull_step = 5
 
 # 优化
@@ -194,9 +215,12 @@ residents, edge_devices, best_solution = optimize_edge_device_positions(num_resi
                                                                         max_battery, warning_battery,
                                                                         max_resident_step, max_seagull_step)
 
+end_time = time.time()
+print("充电次数:")
+print(charge_num_count)
+print("运行时间:")
+print(end_time - start_time)
 # 可视化
 visualize(residents, edge_devices, best_solution, area_size)
-end_time = time.time()
 
-print("充电次数:"+str(charge_num_count))
-print("运行时间:" +str(end_time - start_time))
+

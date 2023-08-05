@@ -40,6 +40,7 @@ class EdgeDevice:
         self.max_battery = max_battery
         self.battery = max_battery
         self.warning_battery = warning_battery
+        self.energy_consume = 2996.64
 
     def detect_resident(self, resident):
         global charge_num_count
@@ -52,8 +53,8 @@ class EdgeDevice:
         if distance <= self.radius and not resident.detected:
             self.battery -= 1
             resident.detected = True
-            print(resident.name)  # 打印已检测居民name
             detected_residents[resident.name] = True
+            self.energy_consume += 0.0092
 
 
 class Whale:
@@ -84,12 +85,12 @@ def evaluate_whale_fitness(whale, residents, edge_devices):
 
 
 # 生成居民对象
-def generate_residents(num_residents):
+def generate_residents(num_residents, area_size):
     # 使用正态分布随机生成居民的初始位置
     df = pd.read_csv('dataset.csv')
     # 提取两列数据并转换为NumPy数组
-    x = df['x2'].values
-    y = df['y2'].values
+    x = df['x3'].values
+    y = df['y3'].values
     residents = [Resident("resident_" + str(i), x[i], y[i]) for i in range(num_residents)]
     for resident in residents:
         detected_residents[resident.name] = resident.detected
@@ -98,17 +99,18 @@ def generate_residents(num_residents):
 
 
 def optimize_edge_device_positions_with_whale_algorithm(num_residents, area_size, num_devices, radius, max_battery,
-                                                        warning_battery):
-    residents = generate_residents(num_residents)
+                                                        warning_battery,
+                                                        max_iterations):
+    residents = generate_residents(num_residents, area_size)
     edge_devices = [EdgeDevice(0, 0, radius, max_battery, warning_battery) for _ in range(num_devices)]
 
     whales = generate_initial_whales(num_devices, area_size)
 
     best_whale = None
     best_fitness = 0
-    i = 0
+    z =0
     while False in detected_residents.values():
-        i += 1
+        z = z + 1
         for resident in residents:
             if not resident.detected:
                 resident.move(max_resident_step)
@@ -123,8 +125,13 @@ def optimize_edge_device_positions_with_whale_algorithm(num_residents, area_size
                     (position[0] + neighbor_positions[j][0]) / 2, (position[1] + neighbor_positions[j][1]) / 2)
                 fitness = evaluate_whale_fitness(Whale(positions[:j] + [new_position] + positions[j + 1:]), residents,
                                                  edge_devices)
-                if fitness > whale.fitness:
+                if fitness >= whale.fitness:
                     positions[j] = new_position
+
+                    distance = np.sqrt((new_position[0] - position[0]) ** 2 + (new_position[1] - position[1]) ** 2)
+                    energy = round(107.44 * (distance / 9) / 3600 - 124.86 * (distance / 9) / 3600, 4)
+                    edge_devices[i].energy_consume += energy
+
                     whale.fitness = fitness
 
         for whale in whales:
@@ -132,8 +139,15 @@ def optimize_edge_device_positions_with_whale_algorithm(num_residents, area_size
             if fitness >= best_fitness:
                 best_whale = whale
                 best_fitness = fitness
+    sum_energy = 0
+    for i in range(num_devices):
+        sum_energy += edge_devices[i].energy_consume
+    print("sum_energy")
+    print(sum_energy)
+    print("迭代次数：")
+    print(z)
 
-    print(f"迭代次数：{i}")
+
     return residents, edge_devices, best_whale
 
 
@@ -158,7 +172,8 @@ def visualize_whales(residents, edge_devices, best_whale, area_size):
 
     ax.annotate(f'Best Fitness: {best_whale.fitness}',
                 (best_whale.positions[0][0], best_whale.positions[0][1] - 10), ha='center')
-    print(f"最好路径的适应度{best_whale.fitness}")
+    print("最佳路径适应度:")
+    print(best_whale.fitness)
     plt.show()
     program_name = sys.argv[0]
     image_name = program_name.replace('.py', '.png')
@@ -179,9 +194,14 @@ if __name__ == "__main__":
     residents, edge_devices, best_whale = optimize_edge_device_positions_with_whale_algorithm(num_residents, area_size,
                                                                                               num_devices, radius,
                                                                                               max_battery,
-                                                                                              warning_battery)
+                                                                                              warning_battery,
+                                                                                              max_iterations)
     end_time = time.time()
-    print(f"充电次数：{charge_num_count}")
-    print(f"运行时间：{end_time - start_time}")
+    print("充电次数:")
+    print(charge_num_count)
+    print("运行时间:")
+    print(end_time - start_time)
     # 可视化鲸鱼算法结果
     visualize_whales(residents, edge_devices, best_whale, area_size)
+
+
